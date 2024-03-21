@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "root",
+    "password": "Yea017SalEh@",
+    "database": "day_1",
+    "host": "127.0.0.1",
+    "dialect": "day_1"
+  },
+  "test": {
+    "username": "root",
+    "password": "Yea017SalEh@",
+    "database": "day_1",
+    "host": "127.0.0.1",
+    "dialect": "day_1"
+  },
+  "production": {
+    "username": "root",
+    "password": "Yea017SalEh@",
+    "database": "day_1",
+    "host": "127.0.0.1",
+    "dialect": "day_1"
+  }
+}
