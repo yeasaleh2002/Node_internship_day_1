@@ -3,13 +3,111 @@ const router = express.Router();
 const db = require('../../models');
 
 // GET all orders
-router.get('/', async (req, res) => {
+// router.get('/', async (req, res) => {
+//   try {
+//     const orders = await db.order.findAll();
+//     res.json(orders);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: error?.message });
+//   }
+// });
+
+// GET all orders with odd order_id
+router.get('/odd', async (req, res) => {
   try {
-    const orders = await db.order.findAll();
-    res.json(orders);
+    console.log("Before query execution");
+    const oddOrders = await db.sequelize.query(
+      `SELECT * FROM orders WHERE MOD(order_id, 2) = 1`,
+      { type: db.sequelize.QueryTypes.SELECT }
+    );
+    console.log("After query execution:", oddOrders);
+    res.json(oddOrders);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Pagination for orders
+// router.get('/', async (req, res) => {
+//   let { page = 1, limit = 10 } = req.query;
+//   page = parseInt(page);
+//   limit = parseInt(limit);
+//   try {
+//     const { count, rows } = await db.order.findAndCountAll({
+//       offset: (page - 1) * limit,
+//       limit
+//     });
+
+//     const totalPages = Math.ceil(count / limit);
+
+//     // Ensure the page is within bounds
+//     if (page < 1 || page > totalPages) {
+//       return res.status(400).json({ error: 'Invalid page number' });
+//     }
+
+//     res.json({ total: count, page, totalPages, list: rows });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
+
+// Pagination with sorting for orders
+router.get('/', async (req, res) => {
+  let { page = 1, limit = 10, sort = 'order_id', direction = 'ASC' } = req.query;
+  page = parseInt(page);
+  limit = parseInt(limit);
+
+  try {
+    // Validate direction
+    if (!['ASC', 'DESC'].includes(direction.toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid direction. Must be ASC or DESC.' });
+    }
+
+    // Offset calculation
+    const offset = (page - 1) * limit;
+
+    // Find and count orders with pagination and sorting
+    const { count, rows } = await db.order.findAndCountAll({
+      offset,
+      limit,
+      order: [[sort, direction]]
+    });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(count / limit);
+
+    // Ensure the page is within bounds
+    if (page < 1 || page > totalPages) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    res.json({ total: count, page, totalPages, list: rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Pagination using cursor method
+router.get('/cursor', async (req, res) => {
+  const { order_id, limit = 10 } = req.query;
+  try {
+    const orders = await db.order.findAll({
+      where: {
+        order_id: { [db.Sequelize.Op.gt]: order_id }
+      },
+      limit: parseInt(limit) // Convert limit to integer
+    });
+    res.json({ order_id, list: orders });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error?.message });
   }
 });
 
@@ -24,7 +122,7 @@ router.get('/:id', async (req, res) => {
     res.json(order);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error?.message });
   }
 });
 
@@ -36,7 +134,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(newOrder);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error?.message });
   }
 });
 
@@ -53,7 +151,7 @@ router.put('/:id', async (req, res) => {
     res.json({ message: 'Order updated successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error?.message });
   }
 });
 
@@ -69,8 +167,9 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Order deleted successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error?.message });
   }
 });
+
 
 module.exports = router;
