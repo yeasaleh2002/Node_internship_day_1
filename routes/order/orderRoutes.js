@@ -95,6 +95,7 @@ router.get('/', async (req, res) => {
 
 
 // Pagination using cursor method
+// http://localhost:5000/api/v1/order/cursor?order_id=2&limit=10
 router.get('/cursor', async (req, res) => {
   const { order_id, limit = 10 } = req.query;
   try {

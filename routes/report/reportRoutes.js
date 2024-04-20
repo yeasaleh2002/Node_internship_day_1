@@ -3,54 +3,73 @@ const router = express.Router();
 const db = require('../../models');
 const { Op } = require('sequelize');
 
-// GET /api/v1/report/sale?month=1&year=2022
-router.get('/sale', async (req, res) => {
-  const { month, year } = req.query;
-
-  // Check if month is provided and is a valid number between 1 and 12
-  if (!month || isNaN(month) || month < 1 || month > 12) {
-    return res.status(400).json({ error: 'Invalid or missing month parameter' });
-  }
-
-  // Proceed with the query if month is valid
+router.get('/all', async (req, res) => {
   try {
-    const totalAmount = await db.reports.sum('amount', {
-      where: {
-        month,
-        year,
-      }
-    });
-    res.json({ totalAmount });
+    const orders = await db.reports.findAll();
+    res.json(orders);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
   }
 });
 
-
+// GET /api/v1/report/sale?month=1&year=2022
 // GET /api/v1/report/sale?from_date=2022-01-01&to_date=2022-02-02
-// router.get('/sale', async (req, res) => {
-//   const { from_date, to_date } = req.query;
-//   try {
-//     const totalAmount = await db.reports.sum('amount', {
-//       where: {
-//         createdAt: {
-//           [Op.between]: [from_date, to_date]
-//         }
-//       }
-//     });
-//     res.json({ totalAmount });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
+router.get('/sale', async (req, res) => {
+  const { month, year, from_date, to_date } = req.query;
+
+  if (month && year) {
+    // If month and year are provided, calculate total amount based on month and year
+    try {
+      const totalAmount = await db.reports.sum('amount', {
+        where: {
+          month,
+          year,
+        }
+      });
+      res.json({ totalAmount });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  } else if (from_date && to_date) {
+    // If from_date and to_date are provided, calculate total amount within date range
+    // Parse the dates
+    const fromDate = new Date(from_date);
+    const toDate = new Date(to_date);
+
+    // Check if the dates are valid
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    try {
+      // Query to calculate total amount within the date range
+      const totalAmount = await db.reports.sum('amount', {
+        where: {
+          createdAt: {
+            [Op.between]: [fromDate, toDate]
+          }
+        }
+      });
+
+      res.json({ totalAmount });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  } else {
+    // If neither month/year nor from_date/to_date provided, return error
+    res.status(400).json({ error: 'Invalid or missing parameters' });
+  }
+});
+
 
 // GET /api/v1/report/monthly?year=2022
 router.get('/monthly', async (req, res) => {
   const { year } = req.query;
   try {
-    const monthlySales = await db.Report.findAll({
+    const monthlySales = await db.reports.findAll({
       attributes: [
         'month',
         [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'totalAmount']
@@ -62,7 +81,7 @@ router.get('/monthly', async (req, res) => {
     res.json(monthlySales);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -70,7 +89,7 @@ router.get('/monthly', async (req, res) => {
 router.get('/user', async (req, res) => {
   const { year, user_id } = req.query;
   try {
-    const userSales = await db.Report.findAll({
+    const userSales = await db.reports.findAll({
       attributes: [
         'month',
         [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'totalAmount']
@@ -85,7 +104,7 @@ router.get('/user', async (req, res) => {
     res.json(userSales);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -93,7 +112,7 @@ router.get('/user', async (req, res) => {
 router.get('/shipping_dock', async (req, res) => {
   const { year, shipping_dock_id } = req.query;
   try {
-    const dockSales = await db.Report.findAll({
+    const dockSales = await db.reports.findAll({
       attributes: [
         'month',
         [db.sequelize.fn('SUM', db.sequelize.col('amount')), 'totalAmount']
@@ -108,7 +127,7 @@ router.get('/shipping_dock', async (req, res) => {
     res.json(dockSales);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -116,10 +135,10 @@ router.get('/shipping_dock', async (req, res) => {
 router.get('/user/count', async (req, res) => {
   const { year, user_id } = req.query;
   try {
-    const userOrderCount = await db.Report.findAll({
+    const userOrderCount = await db.reports.findAll({
       attributes: [
         'month',
-        [db.sequelize.fn('COUNT', db.sequelize.col('order_id')), 'orderCount']
+        [db.sequelize.fn('COUNT', db.sequelize.col('order_count')), 'order_count']
       ],
       where: {
         year,
@@ -130,7 +149,7 @@ router.get('/user/count', async (req, res) => {
     res.json(userOrderCount);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Server Error' });
+    res.status(500).json({ error: error.message });
   }
 });
 
